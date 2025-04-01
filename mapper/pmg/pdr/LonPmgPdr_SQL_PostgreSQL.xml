@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skylark.lon.pmg.pdr.biz.LonPmgPdrMapper">
+
+   <!--
+     * ====================================================================
+     * Loan Past Due Record
+     * ====================================================================
+     * selectListSearchLonPmgPdr	: Loan Past Due Record Search(조회)
+     * ====================================================================
+    -->
+    
+    <!-- Loan Past Due Recode Search (연체 기록 현황 조회) -->
+    <select id="selectListSearchLonPmgPdr" parameterType="coreMap" resultType="coreMap">
+	    <!-- sql-id : LonPmgPdrMapper.selectListSearchLonPmgPdr -->
+    	   <![CDATA[
+	    	 SELECT 
+			   		S1.CUSTOMER_NO
+		        	, S3.CUSTOMER_NAME 
+					, CONCAT('[',S3.CUSTOMER_NO,']', ' ', S3.CUSTOMER_NAME) AS CUSTOMER_INFO
+		        	, S1.DISBURSEMENT_NO
+		        	, S1.PRODUCT_CODE  
+		        	, S6.PRODUCT_NAME
+		        	, S1.PASTDUE_OCCUR_DATE
+			        , S1.CURRENCY_CODE
+			        , CASE WHEN S1.PASTDUE_YN = 'Y' THEN 'Under Past Due' ELSE 'Past Due Recovered' end PASTDUE_STATUS
+			        , S1.RECOVERY_DATE
+			        , S1.DISBURSEMENT_AMT 
+			        , S2.DISBURSEMENT_DATE 
+			        , S2.DISBURSE_BALANCE
+			        , S2.MATURITY_DATE
+			        , S2.MANAGE_BRCD 
+			        , S9.BRANCH_NAME
+			        , RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') AS MAX_VALUE
+			        , ROW_NUMBER() OVER(ORDER BY RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') ASC) AS SEQNUM
+			   	
+			   	FROM LON.LON_PASTDUE S1
+			    JOIN LON.LON_DISBURSEMENT S2 
+			      ON S1.ORGANIZATION_CODE = S2.ORGANIZATION_CODE 
+		          AND S1.DISBURSEMENT_NO = S2.DISBURSEMENT_NO	
+			         		       
+		        LEFT OUTER JOIN FRM.FRM_CMM_BRANCH_INFO S9
+		          ON S2.ORGANIZATION_CODE = S9.ORGANIZATION_CODE
+		         AND S2.MANAGE_BRCD = S9.BRANCH_CODE			
+			             
+			    LEFT OUTER JOIN FRM.FRM_CMM_CUSTOMER_BASIC S3 
+			      ON S1.ORGANIZATION_CODE = S3.ORGANIZATION_CODE 
+		         AND S1.CUSTOMER_NO = S3.CUSTOMER_NO 			  
+			           
+			    LEFT OUTER JOIN LON_PRODUCT_INFO S6 
+			      ON S1.ORGANIZATION_CODE = S6.ORGANIZATION_CODE
+		         AND S1.PRODUCT_CODE = S6.PRODUCT_CODE			
+			                  
+			    WHERE S1.PASTDUE_OCCUR_DATE BETWEEN #{asFromDate} AND #{asToDate}
+			      AND RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') > #{maxValue}
+		   ]]> 
+		   <if test=' customerNo != null and !customerNo.equals("") '>
+				<![CDATA[
+	       			AND S1.CUSTOMER_NO = #{customerNo}
+	       		]]>
+	       </if>
+	       			AND S2.MANAGE_BRCD = #{branchCode}
+		   <if test='pastdueStatus == "All"'>
+           		<![CDATA[
+			    	AND S1.PASTDUE_YN IN ('Y', 'N')
+	 	   		]]>
+        	</if> 
+        	<if test='pastdueStatus == "Past Due"'>
+            	<![CDATA[
+			    	AND S1.PASTDUE_YN = 'Y'
+	 			]]>
+        	</if>
+        	<if test='pastdueStatus == "Recovered"'>
+            	<![CDATA[
+			    	AND S1.PASTDUE_YN = 'N'
+	 			]]>
+        	</if>
+        	<![CDATA[
+        			ORDER BY S3.CUSTOMER_NAME, S1.DISBURSEMENT_NO
+        	]]>
+    </select>
+</mapper>
