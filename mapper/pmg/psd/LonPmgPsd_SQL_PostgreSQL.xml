@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skylark.lon.pmg.psd.biz.LonPmgPsdMapper">
+
+   <!--
+     * ====================================================================
+     * Loan Past Due
+     * ====================================================================
+     * selectListSearchLonPmgPsd	: Loan Past Due Search(조회)
+     * ====================================================================
+    -->
+    
+    <!-- Loan Past Due Search (여신 실행 조회) -->
+    <select id="selectListSearchLonPmgPsd" parameterType="coreMap" resultType="coreMap">
+	    <!-- sql-id : LonPmgPsdMapper.selectListSearchLonPmgPsd -->
+    	   <![CDATA[
+	    	   SELECT *
+					FROM (
+					    SELECT 
+				  	    	S1.CUSTOMER_NO
+					        , S3.CUSTOMER_NAME 
+							, CONCAT('[',S3.CUSTOMER_NO,']', ' ', S3.CUSTOMER_NAME) AS CUSTOMER_INFO
+							, CONCAT(S2.MANAGE_BRCD,' ', S9.BRANCH_NAME) AS BRANCH_INFO
+					        , S1.DISBURSEMENT_NO
+					        , S2.PRODUCT_CODE  
+					        , S6.PRODUCT_NAME
+					        , S1.PASTDUE_OCCUR_DATE
+					        , S1.BASE_DATE
+					        , TO_DATE(S1.BASE_DATE, 'YYYY-MM-DD') - TO_DATE(S1.PASTDUE_OCCUR_DATE, 'YYYY-MM-DD') + 1 AS DAYS
+					        , S1.CURRENCY_CODE 
+					        , S1.PASTDUE_CODE 
+					        , S7.SHORT_DECODE_VALUE AS PASTDUE_TYPE_NAME
+					        , S1.PASTDUE_PRINCIPAL 
+					        , S1.PASTDUE_INTEREST 
+					        , S1.DISBURSEMENT_AMT 
+					        , S2.DISBURSEMENT_DATE 
+					        , S2.MATURITY_DATE
+					        , S2.MANAGE_BRCD 
+					        , S9.BRANCH_NAME
+					        , RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') AS MAX_VALUE
+					        , ROW_NUMBER() OVER(ORDER BY RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') ASC) AS SEQNUM
+					   			 
+		   			 FROM LON.LON_PASTDUE_DAILY S1
+			   		 JOIN LON.LON_DISBURSEMENT S2 
+			   	       ON S1.ORGANIZATION_CODE = S2.ORGANIZATION_CODE 
+                           	 AND S1.DISBURSEMENT_NO = S2.DISBURSEMENT_NO
+                       	  	 
+                   	 LEFT OUTER JOIN FRM.FRM_CMM_BRANCH_INFO S9
+                       ON S2.ORGANIZATION_CODE = S9.ORGANIZATION_CODE
+                      AND S2.MANAGE_BRCD = S9.BRANCH_CODE
+			    	 
+			    	 LEFT OUTER JOIN FRM.FRM_CMM_CUSTOMER_BASIC S3 
+			      	   ON S1.ORGANIZATION_CODE = S3.ORGANIZATION_CODE 
+                      AND S1.CUSTOMER_NO = S3.CUSTOMER_NO 
+			    	 
+			    	 LEFT OUTER JOIN LON_PRODUCT_INFO S6 
+			      	   ON S2.ORGANIZATION_CODE = S6.ORGANIZATION_CODE
+                      AND s2.PRODUCT_CODE = s6.PRODUCT_CODE
+			    	 
+			    	 LEFT OUTER JOIN FRM.FRM_SYS_CODE_DETAIL S7 
+			      	   ON S1.ORGANIZATION_CODE = S7.ORGANIZATION_CODE 
+                      AND S1.PASTDUE_CODE = S7.CODE_VALUE
+                      AND S7.CATEGORY_ID = 'LON_PASTDUE_CODE'
+                      AND S7.LANGUAGE_CODE = 'EN'
+				     
+				     LEFT OUTER JOIN LON.LON_REPAYMENT S8 
+			           ON S1.ORGANIZATION_CODE = S8.ORGANIZATION_CODE
+                      AND S1.PASTDUE_CODE = S8.PAST_DUE_CODE
+	    				
+	    			 WHERE S1.BASE_DATE = #{asOfDate}
+	    			   AND RPAD(S3.CUSTOMER_NAME,20, '0')||RPAD(S1.DISBURSEMENT_NO,12, '0') > #{maxValue}
+				]]>
+			    <if test=' customerNo != null and !customerNo.equals("") '>
+			    	<![CDATA[
+     				    AND S1.CUSTOMER_NO = #{customerNo}
+     				]]>
+     			</if>
+     				    AND S2.MANAGE_BRCD = #{branchCode}
+						) a
+			
+				<if test="asFromDate != null and !asFromDate.equals('') or asToDate != null and !asToDate.equals('')">
+  					<![CDATA[						
+						WHERE DAYS BETWEEN COALESCE(CAST(#{asFromDate} AS INTEGER), 1) and COALESCE(CAST(#{asToDate} AS INTEGER),9999999)
+		  			]]>
+				</if>
+				<![CDATA[
+						ORDER BY CUSTOMER_NAME, DISBURSEMENT_NO
+     			
+     			]]>    
+        </select>
+        
+             <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchMasterLonApiTst" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  searchMasterLonApiTst*/
+        <![CDATA[
+			 select
+				p_stat_code,
+				stat_code,
+				stat_name,
+				srch_yn,
+				org_name
+			from
+				frm.frm_api_statistic_master
+			where 1=1 
+			]]>
+			<if test="statCode != null and !statCode.equals('')">
+  					<![CDATA[	
+			and	stat_code = #{statCode}
+			]]>
+     			</if>
+  			<![CDATA[	
+  			ORDER BY SERIAL_NO
+			LIMIT CAST(#{fetchSize} AS BIGINT)
+			]]>
+    </select>    
+    
+    <!-- @DESCRIPTION@ (다건조회) -->
+     <select id="searchDataLonApiTst" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : LonPmgPsdMapper.searchDataLonApiTst*/
+        <![CDATA[
+           WITH parsed_dates AS (
+			   	 SELECT 
+			        s1.organization_code,
+			        s1.serial_no,
+			        s1.data_id,
+			        s1.item_id,
+			        s1.unit_name,
+			        s1.wgt,
+			        s1.time,
+			        s1.data_value,
+			        s1.create_datetime,
+			        s1.create_user_id,
+			        s1.update_datetime,
+			        s1.update_user_id,
+			        s1.last_updated_date,
+			        s1.status_code,
+			        s1.year,
+			        s1.month,
+			        s1.quarter,
+			        CASE 
+			            WHEN s1.time ~ '^\d{4}$' THEN CAST(s1.year AS VARCHAR)
+			            WHEN s1.time ~ '^\d{6}$' THEN CAST(s1.year || s1.month AS VARCHAR)
+			            WHEN s1.time ~ '^\d{4}Q[1-4]$' THEN CAST(s1.year || s1.quarter AS VARCHAR)
+			            WHEN s1.time ~ '^\d{8}$' THEN CAST(s1.year || s1.month || SUBSTRING(s1.time, 7, 2) AS VARCHAR)
+			            ELSE NULL
+			        END AS parsed_time
+			    FROM 
+			        frm.frm_api_statistic_data s1
+			)
+		  select
+					s2.stat_code,
+					s2.stat_name,
+					s1.item_id,
+					s3.item_code as item_code1,
+					s3.item_name,
+					s3.item_id,
+					s1.unit_name,
+					s1.wgt,
+					s1.time,
+					s1.data_value,
+					s3.cycle				
+				from
+					parsed_dates s1
+				inner join frm.frm_api_statistic_master s2
+				on	s1.ORGANIZATION_CODE = s2.ORGANIZATION_CODE 
+				and SUBSTRING(s1.item_id FROM 1 FOR 7) = s2.stat_code
+				and s2.used_flag = '1'
+				inner join frm.frm_api_statistic_items s3
+				on	s1.ORGANIZATION_CODE = s3.ORGANIZATION_CODE 
+				and s1.item_id = s3.item_id
+				and s3.used_flag = '1'
+			where 1=1
+			]]>
+			<if test="!startDate.equals('') and !startDate.equals('Invalid Date') and !endDate.equals('') and !endDate.equals('Invalid Date')">
+  					<![CDATA[	
+			and parsed_time BETWEEN replace(#{startDate},'-','') AND replace(#{endDate}, '-','')
+			]]>
+			</if> 
+			<if test="statName != null and !statName.equals('')">
+ 					<![CDATA[	
+			AND UPPER(STAT_NAME) LIKE '%' || UPPER(#{statName}) || '%'
+			]]>
+			</if> 
+			<if test="itemName != null and !itemName.equals('')">
+ 					<![CDATA[	
+			AND UPPER(ITEM_NAME) LIKE '%' || UPPER(#{itemName}) || '%'
+			]]>
+			</if>
+			<if test="cycle != null and !cycle.equals('')">
+			<![CDATA[
+			AND s3.cycle LIKE '%' || #{cycle} || '%'
+			]]> 
+			</if>
+			ORDER BY STAT_NAME, ITEM_CODE, TIME
+			<![CDATA[	
+			LIMIT CAST(#{fetchSize} AS BIGINT)
+			]]>
+     			
+    </select>    
+
+ <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchItemLonApiTst" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  searchItemLonApiTst*/
+        <![CDATA[
+			select
+				s1.stat_code,
+				s2.stat_name,
+				s1.grp_code,
+				s1.grp_name,
+				s1.item_code,
+				s1.item_name,
+				s1.cycle
+			from
+				frm.frm_api_statistic_items s1
+			join frm.frm_api_statistic_master s2
+			 ON s1.ORGANIZATION_CODE = s2.ORGANIZATION_CODE 
+            AND s1.stat_code = s2.stat_code
+			where 1=1
+			 ]]>
+            <![CDATA[
+			  AND s1.ORGANIZATION_CODE = #{sysOrganizationCode}
+			]]>
+			<if test="statCode != null and !statCode.equals('')">
+  					<![CDATA[	
+				AND s2.stat_code = #{statCode}
+				]]>
+				</if> 
+			<if test="itemCode1 != null and !itemCode1.equals('')">
+ 					<![CDATA[	
+				AND s1.item_code = #{itemCode1}
+				]]>
+			</if> 
+				order by stat_name, item_code
+		<![CDATA[	
+			LIMIT CAST(#{fetchSize} AS BIGINT)
+			]]>
+    </select>    
+    
+    <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchSchedulerStatus" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  searchSchedulerStatus*/
+        <![CDATA[
+		SELECT
+			HISTORY_ID,
+			REQUEST_ID,
+			ITEM_ID,
+			STATUS_CODE,
+			REQUEST_STATUS_DESCRIPTION AS REQUEST_STATUS_DESC,
+			TO_CHAR(REQUEST_DTM, 'YYYY-MM-DD HH24:MI:SS.FF3') AS REQUEST_DTM,
+    		TO_CHAR(RESPONSE_DTM, 'YYYY-MM-DD HH24:MI:SS.FF3') AS RESPONSE_DTM,
+			ERROR_CODE,
+			ERROR_MSG AS ERROR_MESSAGE,
+			TO_CHAR(LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS.FF3') AS LAST_UPDATED_DATE,
+			REQUEST_STATUS
+		FROM
+			FRM.FRM_API_REQUEST_HISTORY
+			ORDER BY
+    	REQUEST_DTM DESC
+			]]>
+    </select>    
+</mapper>
