@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skylark.lon.api.interest.mapper.InterestMapper">
+
+    <!--
+     * ====================================================================
+     * @DESCRIPTION@
+     * ====================================================================
+     * select@ @	: @DESCRIPTION@ (단건조회)
+     * selectList@ @	: @DESCRIPTION@ (다건조회)
+     * selectDetail@ @	: @DESCRIPTION@ (상세조회)
+     * insert@ @		: @DESCRIPTION@ (등록)
+     * update@ @		: @DESCRIPTION@ (수정) //현재는 사용X
+     * delete@ @		: @DESCRIPTION@ (삭제)
+     * ====================================================================
+    -->
+
+          <!-- Lon Collateral Manage (등록) -->
+    <insert id="insertExternalMasterDataApi" parameterType="coreMap">
+        /* sql-id : insertExternalMasterDataApi */
+        <![CDATA[
+	  	INSERT
+	  	INTO FRM.FRM_API_STATISTIC_MASTER(
+			ORGANIZATION_CODE,
+			P_STAT_CODE,
+			STAT_CODE,
+			STAT_NAME,
+			SRCH_YN,
+			ORG_NAME,
+			USED_FLAG,
+			CREATE_DATETIME,
+			CREATE_USER_ID,
+			UPDATE_DATETIME,
+			UPDATE_USER_ID,
+			LAST_UPDATED_DATE,
+			STATUS_CODE)			
+			VALUES(
+			'1000',
+			#{pStatCode},
+			#{statCode},
+			#{statName},
+			#{srchYn},
+			#{orgName},
+			'0',
+			now(),
+			'system'::character varying,
+			now(),
+			'system'::character varying,
+			now(),
+			'01'::character varying)
+	   ]]>
+    </insert>
+    
+    
+	<!-- @DESCRIPTION@ (다건조회) -->
+    <select id="getInterest" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  */
+        <![CDATA[
+ 		select
+			organization_code,
+			serial_no,
+			create_datetime,
+			create_user_id,
+			update_datetime,
+			update_user_id,
+			delete_datetime,
+			delete_user_id,
+			stat_code,
+			stat_name,
+			item_code1,
+			item_name1,
+			item_code2,
+			item_name2,
+			item_code3,
+			item_name3,
+			item_code4,
+			item_name4,
+			unit_name,
+			wgt,
+			time,
+			data_value,
+			stat_item_seq_no,
+			status_code
+		from
+			frm.frm_api_statistic_search_data
+		where stat_code= #{statCode}
+			and item_code1= #{itemCode1}
+			and time between #{startDate} and #{endDate}
+			]]>
+    </select>    
+    
+      <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchMasterFrmAppEac" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : searchMasterFrmAppEac */
+        <![CDATA[
+			WITH RECURSIVE StatMasterHierarchy AS (
+			    SELECT 
+			        organization_code,
+			        serial_no,
+			        stat_code,
+			        p_stat_code,
+			        used_flag,
+					stat_name,
+			        1 AS level,
+			        TO_CHAR(last_updated_date, 'YYYY-MM-DD') AS LAST_UPDATE
+			    FROM 
+			        frm.frm_api_statistic_master
+			    WHERE 1=1
+			    AND   p_stat_code = '*'
+			 
+			    UNION ALL
+			    SELECT 
+			        m.organization_code,
+			        m.serial_no,
+			        m.stat_code,
+			        m.p_stat_code,
+			        m.used_flag,
+			        m.stat_name,
+			        h.level + 1,
+			        TO_CHAR(m.last_updated_date, 'YYYY-MM-DD') AS LAST_UPDATE
+			    FROM 
+			        frm.frm_api_statistic_master m
+			        JOIN StatMasterHierarchy h ON m.p_stat_code = h.stat_code
+			         )
+			SELECT 
+			   organization_code,
+			    serial_no,
+			    stat_code,
+			    used_flag,
+			    stat_name,
+			    level,
+			    last_update
+			FROM 
+				StatMasterHierarchy
+				WHERE 1=1
+			]]>
+			<if test='statusIdx == "STAT_CODE" and statusIdx.equals("STAT_CODE")'>
+            <![CDATA[
+                AND UPPER(STAT_CODE) LIKE '%' || UPPER(#{searchStatIdx}) || '%'
+            ]]>
+            </if>
+            <if test='statusIdx == "STAT_NAME" and statusIdx.equals("STAT_NAME")'>
+            <![CDATA[
+                AND UPPER(STAT_NAME) LIKE '%' || UPPER(#{searchStatIdx}) || '%'
+            ]]>
+            </if>
+             <![CDATA[
+    			AND USED_FLAG = (CASE WHEN #{usedFlag} = 'Y' THEN '1'
+                          WHEN #{usedFlag} = 'N' THEN '0'
+                          ELSE USED_FLAG END)
+			]]>
+			  <![CDATA[
+		   ORDER BY 
+        		serial_no
+		]]>
+    </select>    
+    
+     <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchItemFrmAppEac" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  */
+        <![CDATA[
+			select
+				s1.stat_code,
+				s2.stat_name,
+				s1.grp_code,
+				s1.grp_name,
+				s1.item_code,
+				s1.item_name,
+				s1.cycle,
+				s1.used_flag AS detail_used_flag
+			from
+				frm.frm_api_statistic_items s1
+			join frm.frm_api_statistic_master s2
+			 ON s1.ORGANIZATION_CODE = s2.ORGANIZATION_CODE 
+            AND s1.stat_code = s2.stat_code
+			where 1=1
+			 AND s1.STATUS_CODE = '01'
+			 ]]>
+               <if test='itemIdx == "ITEM_CODE" and itemIdx.equals("ITEM_CODE")'>
+            <![CDATA[
+                AND UPPER(s1.ITEM_CODE) LIKE '%' || UPPER(#{searchItemIdx}) || '%'
+            ]]>
+            </if>
+            <if test='itemIdx == "ITEM_NAME" and itemIdx.equals("ITEM_NAME")'>
+            <![CDATA[
+                AND UPPER(s1.ITEM_NAME) LIKE '%' || UPPER(#{searchItemIdx}) || '%'
+            ]]>
+            </if>
+            <![CDATA[
+			  AND s1.stat_code = #{statCode}
+			    AND s1.USED_FLAG = (CASE WHEN #{detailUsedFlag} = 'Y' THEN '1'
+                          WHEN #{detailUsedFlag} = 'N' THEN '0'
+                          ELSE s1.USED_FLAG END)
+			  AND s1.ORGANIZATION_CODE = #{sysOrganizationCode}
+			    ORDER BY ITEM_CODE
+			]]>
+			
+    </select>
+    
+   
+    
+     <!-- @DESCRIPTION@ (master usedFlag update) -->
+       <update id="updateMasterFrmAppEac" parameterType="coreMap">
+        /* sql-id : updateMasterFrmAppEac*/
+        <![CDATA[
+    		update
+				frm.frm_api_statistic_master
+			set
+				used_flag = #{usedFlag}
+			where 1=1
+			 AND ORGANIZATION_CODE = #{sysOrganizationCode}
+			 AND stat_code = #{statCode} 
+        ]]>
+    </update>
+    
+    
+    <!-- @DESCRIPTION@ (item usedFlag update) -->
+       <update id="updateItemFrmAppEac" parameterType="coreMap">
+        /* sql-id : updateItemFrmAppEac*/
+        <![CDATA[
+    		update
+				frm.frm_api_statistic_items
+			set
+				used_flag = #{detailUsedFlag}
+			where 1=1
+			 AND ORGANIZATION_CODE = #{sysOrganizationCode}
+			 AND item_id = #{statCode} || #{itemCode} || #{cycle}
+        ]]>
+    </update>
+    
+      <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchOriginalMaster" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : searchOriginalMaster */
+        <![CDATA[
+    			 select
+				p_stat_code,
+				stat_code,
+				stat_name,
+				srch_yn,
+				org_name,
+				used_flag
+			from
+				frm.frm_api_statistic_master
+			where 1=1 
+     			order by serial_no
+    ]]>
+    </select>  
+      
+        <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchOriginalItem" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : searchOriginalItem */
+        <![CDATA[
+   			select
+				item_id,
+				stat_code,
+				grp_code,
+				grp_name,
+				item_code,
+				item_name,
+				p_item_code,
+				p_item_name,
+				used_flag,
+				cycle
+			from
+				frm.frm_api_statistic_items
+			where 1=1 
+     			order by serial_no
+    ]]>
+    </select>  
+    
+         <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchOriginalData" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : searchOriginalData */
+        <![CDATA[
+		select
+			data_id,
+			item_id,
+			substring(item_id, 0, 8) as stat_code, 
+			SUBSTRING(item_id, 8, LENGTH(item_id) - 8) as item_code,
+			unit_name,
+			wgt,
+			time,
+			data_value,
+			year,
+			month,
+			quarter
+		from
+			frm.frm_api_statistic_data
+    ]]>
+    </select>
+    
+       <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchMatchedOriginalData" parameterType="String" resultType="coreMap">
+        /* sql-id :interestMapper.searchMatchedOriginalData */
+        <![CDATA[
+		select
+			data_id,
+			item_id
+		from
+			frm.frm_api_statistic_data
+		where
+			item_id = #{itemId}
+    ]]>
+    </select>  
+    
+      
+     <!-- @DESCRIPTION@ (다건조회) -->
+    <select id="searchMasterUsedFlag" parameterType="coreMap" resultType="coreMap">
+        /* sql-id : searchMasterUsedFlag */
+        <![CDATA[
+    	select
+			stat_code,
+			used_flag
+		from
+			frm.frm_api_statistic_master
+	 ]]>
+    </select> 
+    
+        <!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteOriginalMaster" parameterType="coreMap">
+        /* sql-id : deleteOriginalMaster */
+        <![CDATA[
+         	delete	
+			from
+				frm.frm_api_statistic_master
+			where organization_code = '1000'
+        ]]>
+    </delete>
+    
+      <!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteItemStatCodeData" parameterType="coreMap">
+        /* sql-id : deleteItemStatCodeData */
+        <![CDATA[
+         delete
+			from
+			frm.frm_api_statistic_items
+		where
+			stat_code = #{statCode}
+        ]]>
+    </delete>
+    
+    	<!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteSearchStatCodeData" parameterType="coreMap">
+        /* sql-id : deleteSearchStatCodeData */
+        <![CDATA[
+       delete
+			from
+				frm.frm_api_statistic_data
+		where LEFT(data_id, 7) = #{statCode}
+        ]]>
+    </delete>
+    
+       <!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteDataSearchItemCode" parameterType="String">
+        /* sql-id : deleteDataSearchItemCode */
+        <![CDATA[
+	   delete 
+		from
+			frm.frm_api_statistic_data
+		where 1=1
+		and	item_id = #{itemId}
+			]]>
+    </delete>
+    
+       <!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteOriginalItem" parameterType="coreMap">
+        /* sql-id : deleteOriginalItem */
+        <![CDATA[
+       delete
+			from
+		frm.frm_api_statistic_items
+			where
+		organization_code = '1000'
+        ]]>
+    </delete>
+    
+   <!-- Loan Pledge Manage (삭제) -->
+    <delete id="deleteOriginalData" parameterType="coreMap">
+        /* sql-id : deleteOriginalData */
+        <![CDATA[
+       delete
+			from
+		frm.frm_api_statistic_data
+			where
+		organization_code = '1000'
+        ]]>
+    </delete>
+    
+    <insert id="insertNewMasterData" parameterType="coreMap">
+     /* sql-id : insertNewMasterData */
+		   <![CDATA[
+		   INSERT INTO FRM.FRM_API_STATISTIC_MASTER (
+		       ORGANIZATION_CODE,
+		       P_STAT_CODE,
+		       STAT_CODE,
+		       STAT_NAME,
+		       SRCH_YN,
+		       ORG_NAME,
+		       USED_FLAG,
+		       CREATE_DATETIME,
+		       CREATE_USER_ID,
+		       UPDATE_DATETIME,
+		       UPDATE_USER_ID,
+		       LAST_UPDATED_DATE,
+		       STATUS_CODE
+		   ) VALUES 
+		    ]]>
+		   <foreach collection="statistictablelist" item="item" separator=",">
+		    <![CDATA[
+		       (
+            '1000',
+            #{item.pStatCode},
+            #{item.statCode},
+            #{item.statName},
+            #{item.srchYn},
+       	 ]]>
+		 <choose>
+        <when test="item.orgName != null and item.orgName != 'null'">
+         <![CDATA[
+            #{item.orgName},
+            ]]>
+        </when>
+        <otherwise>
+          <![CDATA[
+            null,
+             ]]>
+        </otherwise>
+    </choose>
+     <![CDATA[
+            #{item.usedFlag},
+            now(),
+            'system',
+            now(),
+            'system',
+            now(),
+            '01'
+        )
+          ]]>
+    </foreach>
+</insert>
+
+       <insert id="insertNewItemListData" parameterType="coreMap">
+       /* sql-id : InterestMapper.insertNewItemListData */
+    <![CDATA[
+		   insert into FRM.FRM_API_STATISTIC_ITEMS(
+				ORGANIZATION_CODE,
+				ITEM_ID,
+				STAT_CODE,
+				GRP_CODE,
+				GRP_NAME,
+				ITEM_CODE,
+				ITEM_NAME,
+				P_ITEM_CODE,
+				P_ITEM_NAME,
+				CREATE_DATETIME,
+				CREATE_USER_ID,
+				UPDATE_DATETIME,
+				UPDATE_USER_ID,
+				LAST_UPDATED_DATE,
+				USED_FLAG,
+				STATUS_CODE,
+				CYCLE
+			) VALUES 
+     ]]>
+    <foreach collection="statisticitemlist" item="item" separator=",">
+     <![CDATA[
+        (
+            '1000',
+             concat(#{item.statCode}, #{item.itemCode}, #{item.cycle}),
+            #{item.statCode},
+            #{item.grpCode},
+            #{item.grpName},
+            #{item.itemCode},
+            #{item.itemName},
+		        ]]>
+			 <choose>
+		       <when test="item.pItemCode != null and item.pItemCode != 'null'">
+		        <![CDATA[
+		        #{item.pItemCode},
+		           ]]>
+		       </when>
+		       <otherwise>
+		         <![CDATA[
+		           null,
+		            ]]>
+		       </otherwise>
+		   </choose>
+		    <![CDATA[
+				 ]]>
+			 <choose>
+		       <when test="item.pItemName != null and item.pItemName != 'null'">
+		        <![CDATA[
+		        #{item.pItemName},
+		           ]]>
+		       </when>
+		       <otherwise>
+		         <![CDATA[
+		           null,
+		            ]]>
+		       </otherwise>
+		   </choose>
+		    <![CDATA[
+		    now(),
+            'system',
+            now(),
+            'system',
+            now(),
+            #{item.usedFlag},
+            '01',
+            #{item.cycle}
+        )
+          ]]>
+    </foreach>
+    
+    </insert>
+    
+    
+       <insert id="insertNewItemData" parameterType="coreMap">
+       /* sql-id : InterestMapper.insertNewItemData  */
+    <![CDATA[
+		   insert into FRM.FRM_API_STATISTIC_ITEMS(
+				ORGANIZATION_CODE,
+				ITEM_ID,
+				STAT_CODE,
+				GRP_CODE,
+				GRP_NAME,
+				ITEM_CODE,
+				ITEM_NAME,
+				P_ITEM_CODE,
+				P_ITEM_NAME,
+				CREATE_DATETIME,
+				CREATE_USER_ID,
+				UPDATE_DATETIME,
+				UPDATE_USER_ID,
+				LAST_UPDATED_DATE,
+				USED_FLAG,
+				STATUS_CODE,
+				CYCLE
+			) VALUES 
+     ]]>
+  
+     <![CDATA[
+        (
+            '1000',
+             concat(#{statCode}, #{itemCode}, #{cycle}),
+            #{statCode},
+            #{grpCode},
+            #{grpName},
+            #{itemCode},
+            #{itemName},
+                  ]]>
+			 <choose>
+		       <when test="item.pItemCode != null and item.pItemCode != 'null'">
+		        <![CDATA[
+		        #{item.pItemCode},
+		           ]]>
+		       </when>
+		       <otherwise>
+		         <![CDATA[
+		           null,
+		            ]]>
+		       </otherwise>
+		   </choose>
+		    <![CDATA[
+				 ]]>
+			 <choose>
+		       <when test="item.pItemName != null and item.pItemName != 'null'">
+		        <![CDATA[
+		        #{item.pItemName},
+		           ]]>
+		       </when>
+		       <otherwise>
+		         <![CDATA[
+		           null,
+		            ]]>
+		       </otherwise>
+		   </choose>
+		    <![CDATA[
+            now(),
+            'system',
+            now(),
+            'system',
+            now(),
+            #{usedFlag},
+            '01',
+            #{cycle}
+        )
+          ]]>
+    </insert>
+    
+    <insert id="insertNewRealData" parameterType="coreMap">
+       /* sql-id : InterestMapper.insertNewRealData */
+   	 <![CDATA[
+		insert
+			into
+			frm.frm_api_statistic_data
+			(organization_code,
+			item_id,
+			data_id,
+			unit_name,
+			wgt,
+			time,
+			data_value,
+			create_datetime,
+			create_user_id,
+			update_datetime,
+			update_user_id,
+			last_updated_date,
+			status_code,
+			year,
+			month,
+			quarter
+			) values
+			('1000',
+			   #{statCode} || #{itemCode1} || #{cycle},
+         	#{statCode} || #{itemCode1} || #{cycle} || #{time},
+			#{unitName},
+			 ]]>
+		 <choose>
+        <when test="wgt != null and wgt != 'null'">
+         <![CDATA[
+            #{wgt}::NUMERIC,
+            ]]>
+        </when>
+        <otherwise>
+          <![CDATA[
+            null,
+             ]]>
+        </otherwise>
+    </choose>
+     <![CDATA[
+			#{time},
+			 #{dataValue}::NUMERIC,
+			now(),
+			'system'::character varying,
+			now(),
+			'system'::character varying,
+			now(),
+			'01'::character varying,
+			#{year},
+			#{month},
+			#{quarter})
+          ]]>
+    </insert>
+
+</mapper>
