@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.skylark.lon.api.exchange.mapper.ExchangeRateMapper">
+
+    <!--
+     * ====================================================================
+     * @DESCRIPTION@
+     * ====================================================================
+     * select@ @	: @DESCRIPTION@ (단건조회)
+     * selectList@ @	: @DESCRIPTION@ (다건조회)
+     * selectDetail@ @	: @DESCRIPTION@ (상세조회)
+     * insert@ @		: @DESCRIPTION@ (등록)
+     * update@ @		: @DESCRIPTION@ (수정) //현재는 사용X
+     * delete@ @		: @DESCRIPTION@ (삭제)
+     * ====================================================================
+    -->
+
+    <!-- @DESCRIPTION@ (단건조회) -->
+    <select id="select@U_CAMEL_PACKAGE@" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  */
+ 		<![CDATA[
+         SELECT
+			ORGANIZATION_CODE
+			  ,	SERIAL_NO
+			  ,	STATUS_CODE
+			  ,	CREATE_DATETIME
+			  ,	CREATE_USER_ID
+			  ,	UPDATE_DATETIME
+			  ,	UPDATE_USER_ID
+			  ,	DELETE_DATETIME
+			  ,	DELETE_USER_ID
+			  ,	BRANCH_CODE
+			  ,	CURRENCY_UNIT
+			  ,	CURRENCY_NAME
+			  ,	TT_BANK_BUY_AMOUNT
+			  ,	TT_BANK_SELL_AMOUNT
+			  ,	BASE_RATE
+			  ,	BOOK_PRICE
+			  ,	YEARLY_FEE_RATE
+			  ,	TEN_DAY_FEE_RATE
+			  ,	KFTC_BASE_RATE
+			  ,	KFTC_BOOK_PRICE
+			  ,	QUOTE_DATE
+			  ,	EXCHANGE_SEQ_NO
+		FROM
+			FRM.FRM_API_EXCHANGE_RATE_DATA
+		WHERE ORGANIZATION_CODE= #{sysOrganizationCode}
+		   AND QUOTE_DATE= #{searchDate}
+		   AND CURRENCY_UNIT= #{currencyUnit}
+        ]]>
+    </select>
+
+	<!-- @DESCRIPTION@ (다건조회) -->
+    <select id="selectList@U_CAMEL_PACKAGE@" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  */
+ 		<![CDATA[
+         SELECT
+			ORGANIZATION_CODE
+			  ,	SERIAL_NO
+			  ,	STATUS_CODE
+			  ,	CREATE_DATETIME
+			  ,	CREATE_USER_ID
+			  ,	UPDATE_DATETIME
+			  ,	UPDATE_USER_ID
+			  ,	DELETE_DATETIME
+			  ,	DELETE_USER_ID
+			  ,	BRANCH_CODE
+			  ,	CURRENCY_UNIT
+			  ,	CURRENCY_NAME
+			  ,	TT_BANK_BUY_AMOUNT
+			  ,	TT_BANK_SELL_AMOUNT
+			  ,	BASE_RATE
+			  ,	BOOK_PRICE
+			  ,	YEARLY_FEE_RATE
+			  ,	TEN_DAY_FEE_RATE
+			  ,	KFTC_BASE_RATE
+			  ,	KFTC_BOOK_PRICE
+			  ,	QUOTE_DATE
+			  ,	EXCHANGE_SEQ_NO
+		FROM
+			FRM.FRM_API_EXCHANGE_RATE_DATA
+		WHERE 1 = 1
+		AND QUOTE_DATE IN
+		]]>
+		 <foreach collection="arryDbRequire" item="searchDate" index="index" open="(" separator="," close=")">
+            <![CDATA[
+        		#{searchDate}
+        	]]>
+         </foreach>
+         AND CURRENCY_UNIT IN
+          <foreach collection="arryDbRequire" item="currencyUnit" index="index" open="(" separator="," close=")">
+            <![CDATA[
+        		#{currencyUnit}
+        	]]>
+         </foreach>
+    </select>
+
+
+    <!-- @DESCRIPTION@ (상세조회) -->
+    <select id="selectDetail@U_CAMEL_PACKAGE@" parameterType="coreMap" resultType="coreMap">
+        /* sql-id :  */
+ 		<![CDATA[
+        @
+        SELECT_ONE_QUERY
+        @
+        ]]>
+    </select>
+
+    <!-- @DESCRIPTION@ (등록) -->
+    <update id="insert@U_CAMEL_PACKAGE@" parameterType="coreMap">
+        /* sql-id :  */
+ 		<![CDATA[
+        INSERT INTO FRM.FRM_API_EXCHANGE_RATE_DATA (
+                    ORGANIZATION_CODE
+				  ,	STATUS_CODE
+				  ,	CREATE_DATETIME
+				  ,	CREATE_USER_ID
+				  , UPDATE_DATETIME
+				  ,	UPDATE_USER_ID
+				  ,	BRANCH_CODE
+				  ,	CURRENCY_UNIT
+				  ,	CURRENCY_NAME
+				  ,	TT_BANK_BUY_AMOUNT
+				  ,	TT_BANK_SELL_AMOUNT
+				  ,	BASE_RATE
+				  ,	BOOK_PRICE
+				  ,	YEARLY_FEE_RATE
+				  ,	TEN_DAY_FEE_RATE
+				  ,	KFTC_BASE_RATE
+				  ,	KFTC_BOOK_PRICE
+				  ,	QUOTE_DATE
+				  ,	EXCHANGE_SEQ_NO
+        ) VALUES (
+                    #{sysOrganizationCode}
+                  , '01'
+                  , #{sysDatetime}
+                  , #{sysUserId}
+                  , #{sysDatetime}
+                  , #{sysUserId}
+                  , #{branchCode}::NUMERIC
+                  , #{currencyUnit}
+                  , #{currencyName}
+                  , #{ttBankBuyAmount}::NUMERIC
+                  , #{ttBankSellAmount}::NUMERIC
+                  , #{baseRate}::NUMERIC
+                  , #{bookPrice}::NUMERIC
+                  , #{yearlyFeeRate}::NUMERIC
+                  , #{tenDayFeeRate}::NUMERIC
+                  , #{kftcBaseRate}::NUMERIC
+                  , #{kftcBookPrice}::NUMERIC
+                  , #{searchDate}
+                  , #{searchDate} || #{dataCode} || #{currencyUnit}
+             )
+        ]]>
+    </update>
+
+    <!-- @DESCRIPTION@ (수정) -->
+    <update id="update@U_CAMEL_PACKAGE@" parameterType="coreMap">
+        /* sql-id : */
+ 		<![CDATA[
+        @
+        UPDATE_QUERY
+        @
+        ]]>
+    </update>
+
+    <!-- @DESCRIPTION@ (삭제) -->
+    <update id="delete@U_CAMEL_PACKAGE@" parameterType="coreMap">
+        /* sql-id : */
+ 		<![CDATA[
+          UPDATE FRM.FRM_API_EXCHANGE_RATE_DATA 
+           SET DELETE_DATETIME = #{sysDatetime}
+             , DELETE_USER_ID  = #{sysUserId}
+             , UPDATE_DATETIME = #{sysDatetime}
+             , UPDATE_USER_ID  = #{sysUserId}
+             , STATUS_CODE     = '02'
+         WHERE 1 = 1
+           AND ORGANIZATION_CODE = #{sysOrganizationCode}
+           AND QUOTE_DATE = #{searchDate}
+           AND CURRENCY_UNIT = #{currencyUnit}
+        ]]>
+    </update>
+</mapper>
